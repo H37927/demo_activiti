@@ -1,0 +1,1 @@
+mvn install:install-file -Dfile=jgraphx-v3.9.10.jar -DgroupId=com.github.jgraph -DartifactId=jgraphx -Dversion=v3.9.10 -Dpackaging=jar

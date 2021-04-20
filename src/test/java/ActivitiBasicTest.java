@@ -1,7 +1,4 @@
-import org.activiti.engine.ProcessEngine;
-import org.activiti.engine.ProcessEngines;
-import org.activiti.engine.RepositoryService;
-import org.activiti.engine.RuntimeService;
+import org.activiti.engine.*;
 import org.activiti.engine.history.HistoricActivityInstance;
 import org.activiti.engine.repository.Deployment;
 import org.activiti.engine.repository.ProcessDefinition;
@@ -37,10 +34,12 @@ public class ActivitiBasicTest {
     }
 
     /**
+     * 部署流程定义
      * 1）act_re_deployment 部署表 部署ID和部署名称就存在这张表中
      * 2）act_re_procdef 流程定义表
      * 3）act_ge_bytearray 流程资源表：流程定义文档的存放地。每部署一个流程定义就会增加两条记录，
-     * 一条是关于 bpmn 规则文件的，一条是图片的（如果部署时只指定了 bpmn 一个文件，activiti 会在部署时解析 bpmn 文件内容自动生成流程图）。
+     * 一条是关于 bpmn 规则文件的，
+     * 一条是图片的（如果部署时只指定了 bpmn 一个文件，activiti 会在部署时解析 bpmn 文件内容自动生成流程图）。
      * 两个文件不是很大，都是以二进制形式存储在数据库中。
      **/
     @Test
@@ -83,11 +82,12 @@ public class ActivitiBasicTest {
     public void startProcessInstance() {
         //1、流程定义的key，通过这个key来启动流程实例
         String processDefinitionKey = "my_evection";
-        //2、与正在执行的流程实例和执行对象相关的Service
-        // startProcessInstanceByKey方法还可以设置其他的参数，比如流程变量。
         ProcessEngine processEngine = ProcessEngines.getDefaultProcessEngine();
+        //2、与正在执行的流程实例和执行对象相关的Service
         RuntimeService runtimeService = processEngine.getRuntimeService();
         //使用流程定义的key启动流程实例，key对应bpmn文件中id的属性值，使用key值启动，默认是按照最新版本的流程定义启动
+        //startProcessInstanceByKey方法还可以设置其他的参数，比如流程变量。
+        //startProcessInstanceByKey(String processDefinitionKey, String businessKey)
         ProcessInstance processInstance = runtimeService.startProcessInstanceByKey(processDefinitionKey);
         System.out.println("流程实例ID:" + processInstance.getId());//流程实例ID
         System.out.println("流程定义ID:" + processInstance.getProcessDefinitionId());//流程定义ID
@@ -97,12 +97,14 @@ public class ActivitiBasicTest {
     /**
      * 查询某人的任务
      * act_ru_task 流程当前活动的任务
-     * 完成的任务进入act_hi_taskinst表
+     * 完成的任务进入 act_hi_taskinst 表
      */
     @Test
     public void findPersonalTask() {
         ProcessEngine processEngine = ProcessEngines.getDefaultProcessEngine();
-        List<Task> list = processEngine.getTaskService()//与正在执行的任务管理相关的Service
+        //与正在执行的任务管理相关的Service
+        TaskService taskService = processEngine.getTaskService();
+        List<Task> list = taskService
                 .createTaskQuery()//创建任务查询对象
                 /**查询条件（where部分）*/
                 .processDefinitionKey("my_evection")
@@ -150,8 +152,8 @@ public class ActivitiBasicTest {
         ProcessEngine processEngine = ProcessEngines.getDefaultProcessEngine();
         //任务ID，上一步查询得到的。
         String taskId = "2505";
-        processEngine.getTaskService()//与正在执行的任务管理相关的Service
-                .complete(taskId);
+        TaskService taskService = processEngine.getTaskService();//与正在执行的任务管理相关的Service
+        taskService.complete(taskId);
         System.out.println("完成任务：任务ID：" + taskId);
     }
 
@@ -162,12 +164,13 @@ public class ActivitiBasicTest {
     public void findLastVersionProcessDefinition() {
         ProcessEngine processEngine = ProcessEngines.getDefaultProcessEngine();
 
-        List<ProcessDefinition> list = processEngine.getRepositoryService()//
+        RepositoryService repositoryService = processEngine.getRepositoryService();
+        List<ProcessDefinition> list = repositoryService//
                 .createProcessDefinitionQuery()//
-//                .processDefinitionKey("my_evection")
+                //.processDefinitionKey("my_evection")
                 .orderByProcessDefinitionVersion().asc()//使用流程定义的版本升序排列
                 .list();
-//         map集合的特点：当map集合key值相同的情况下，后一次的值将替换前一次的值
+        //map集合的特点：当map集合key值相同的情况下，后一次的值将替换前一次的值
         Map<String, ProcessDefinition> map = new LinkedHashMap<String, ProcessDefinition>();
         if (list != null && list.size() > 0) {
             for (ProcessDefinition pd : list) {
@@ -199,19 +202,19 @@ public class ActivitiBasicTest {
         ProcessEngine processEngine = ProcessEngines.getDefaultProcessEngine();
         //使用部署ID，完成删除，指定部署对象id为2501删除，就是act_re_deployment的主键
         String deploymentId = "2501";
+
+        RepositoryService repositoryService = processEngine.getRepositoryService();
         /**
          * 不带级联的删除
          *    只能删除没有处于活动中的流程定义（从没启动或所有启动的流程都完成了），如果存在处于活动中的流程，就会抛出异常
          */
-//      processEngine.getRepositoryService()//
-//                      .deleteDeployment(deploymentId);
+        // repositoryService.deleteDeployment(deploymentId);
 
         /**
          * 级联删除
          *    不管是否存在活动中的流程，都能可以删除
          */
-        processEngine.getRepositoryService()//
-                .deleteDeployment(deploymentId, true);
+        repositoryService.deleteDeployment(deploymentId, true);
         System.out.println("删除成功！");
     }
 
@@ -224,6 +227,7 @@ public class ActivitiBasicTest {
     public void downloadDefinition() throws IOException {
         ProcessEngine processEngine = ProcessEngines.getDefaultProcessEngine();
         RepositoryService repositoryService = processEngine.getRepositoryService();
+
         ProcessDefinition processDefinition = repositoryService
                 .createProcessDefinitionQuery()
                 .processDefinitionKey("my_evection")
@@ -260,7 +264,8 @@ public class ActivitiBasicTest {
         ProcessEngine processEngine = ProcessEngines.getDefaultProcessEngine();
 
         String processInstanceId = "7501";
-        List<HistoricActivityInstance> list = processEngine.getHistoryService()// 与历史数据（历史表）相关的Service
+        HistoryService historyService = processEngine.getHistoryService();// 与历史数据（历史表）相关的Service
+        List<HistoricActivityInstance> list = historyService
                 .createHistoricActivityInstanceQuery()// 创建历史流程实例查询
                 .processInstanceId(processInstanceId)// 使用流程实例ID查询
 //                .processDefinitionId("")

@@ -5,6 +5,9 @@ import org.junit.Test;
 
 import java.util.List;
 
+/**
+ * 组任务
+ */
 public class CandidateTest {
 
     @Test
@@ -121,7 +124,7 @@ public class CandidateTest {
     }
 
     /**
-     * 查询某人的任务
+     * 查询个人的任务
      * act_ru_task 流程当前活动的任务
      * 完成的任务进入act_hi_taskinst表
      */
